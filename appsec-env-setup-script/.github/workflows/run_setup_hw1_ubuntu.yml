@@ -1,0 +1,21 @@
+name: Run setup script on Ubuntu hw1 
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  run_setup:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run setup script
+        run: |
+          chmod +x ./Linux/setup_hw1.sh
+          ./Linux/setup_hw1.sh
+
+
+          

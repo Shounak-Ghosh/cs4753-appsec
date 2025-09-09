@@ -1,0 +1,19 @@
+ crash1.gft – Out-of-Bounds Write
+- Bug Type: Buffer Overflow / Out-of-Bounds Write
+- Trigger: Moves the memory pointer  beyond the allocated buffer using 0x03 (move forward by 127).
+- Effect: Writes 255 to an invalid memory location with 0x02 (write value at mptr), potentially corrupting adjacent memory or causing a segmentation fault (SIGSEGV).
+- Fix: Perform bound-checking on the memory pointer and throw an error if there is a out-of-bounds access.
+
+crash2.gft – Invalid Program Counter (PC) Jump
+- Bug Type: Out-of-Bounds Execution (JMP to Invalid Memory)
+- Trigger: Uses 0x09 (jump) to move the instruction pointer backwards by 128 bytes, possibly outside the allocated buffer.
+- Effect: Causes undefined behavior: BUS on unknown address
+- Fix: Perform bound-checking on the program counter and throw an error if there is a out-of-bounds access.
+
+hang.gft – Infinite Loop
+- Bug Type: Infinite Execution Loop
+- Trigger: Uses 3 NOPs followed by 0x09\xFD\x00 (jump back by -3), creating an infinite loop.
+- Effect: The program hangs indefinitely, causing high CPU usage.
+- Fix: Implemented a program step counter and exit(1) once steps exceed a given threshold
+
+

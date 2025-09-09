@@ -1,0 +1,132 @@
+cov1.gft and cov2.gft merely increased coverage, they did not cause any crashes/hangs.
+
+Running tests on valid gift cards (expected return value: 0)...
+Testcase                                           Pass? Version              Exit Status
+animated.gft                                       PASS  giftcardreader       0
+examplefile.gft                                    PASS  giftcardreader       0
+message.gft                                        PASS  giftcardreader       0
+
+Running tests on invalid gift cards (expected return value: nonzero)...
+Testcase                                           Pass? Version              Exit Status
+badtype.gft                                        PASS  giftcardreader       1
+crash1.gft                                         PASS  giftcardreader       1
+crash2.gft                                         PASS  giftcardreader       1
+hang.gft                                           PASS  giftcardreader       1
+
+TESTING SUMMARY:
+Passed: 7
+Failed: 0
+Total:  7
+
+File 'giftcardreader.c'
+Lines executed:63.59% of 195
+Creating 'giftcardreader.c.gcov'
+
+----------------------------------------------------
+
+Running tests on valid gift cards (expected return value: 0)...
+Testcase                                           Pass? Version              Exit Status
+animated.gft                                       PASS  giftcardreader       0
+cov1.gft                                          PASS  giftcardreader       0
+cov2.gft                                          PASS  giftcardreader       0
+examplefile.gft                                    PASS  giftcardreader       0
+message.gft                                        PASS  giftcardreader       0
+
+Running tests on invalid gift cards (expected return value: nonzero)...
+Testcase                                           Pass? Version              Exit Status
+badtype.gft                                        PASS  giftcardreader       1
+crash1.gft                                         PASS  giftcardreader       1
+crash2.gft                                         PASS  giftcardreader       1
+hang.gft                                           PASS  giftcardreader       1
+
+TESTING SUMMARY:
+Passed: 9
+Failed: 0
+Total:  9
+
+File 'giftcardreader.c'
+Lines executed:68.72% of 195
+Creating 'giftcardreader.c.gcov'
+
+
+fuzzer1.gft - Inserting large amount of program data, exceeding memory limits
+
+giftcardreader.asan(40149,0x1fa250f40) malloc: nano zone abandoned due to inability to reserve vm space.
+num_bytes: 3115909488
+=================================================================
+==40149==ERROR: AddressSanitizer: requested allocation size 0xffffffffb9b90170 (0xffffffffb9b91170 after adjustments for alignment, red zones etc.) exceeds maximum supported size of 0x10000000000 (thread T0)
+    #0 0x103650c04 in malloc+0x94 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x54c04)
+    #1 0x102d95d94 in gift_card_reader giftcardreader.c:225
+    #2 0x102d96d70 in main giftcardreader.c:324
+    #3 0x192077150  (<unknown module>)
+
+==40149==HINT: if you don't care about these errors you may set allocator_may_return_null=1
+SUMMARY: AddressSanitizer: allocation-size-too-big (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x54c04) in malloc+0x94
+==40149==ABORTING
+[1]    40149 abort      ./giftcardreader.asan 1 
+
+As seen in the output above, the value passed into num_bytes is equivalent to 0xb9b90170. The asan allocation output is the 64-bit sign extended version of this value, which is much larger (17185.7 GB) than the maximum allowed 1TB (1024 GB). 
+My fix involved checking if ret_val->num_bytes goes beyond 1TB (and returning an error if it does) before making the malloc(ret_val->num_bytes) call.
+
+fuzzer2.gft - Reading beyond memory allocated for registers
+
+giftcardreader.asan(90786,0x1fa250f40) malloc: nano zone abandoned due to inability to reserve vm space.
+num_bytes: 368
+   Merchant ID: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+   Customer ID: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+   Num records: 1
+      record_type: animated message
+      message: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+  [running embedded program]  
+=================================================================
+==90786==ERROR: AddressSanitizer: stack-buffer-overflow on address 0x00016fd16b30 at pc 0x0001000ec008 bp 0x00016fd16af0 sp 0x00016fd16ae8
+READ of size 1 at 0x00016fd16b30 thread T0
+    #0 0x1000ec004 in animate giftcardreader.c:71
+    #1 0x1000ece24 in print_gift_card_info giftcardreader.c:156
+    #2 0x1000eee60 in main giftcardreader.c:325
+    #3 0x192077150  (<unknown module>)
+
+Address 0x00016fd16b30 is located in stack of thread T0 at offset 48 in frame
+    #0 0x1000eb7cc in animate giftcardreader.c:22
+
+  This frame has 1 object(s):
+    [32, 48) 'regs' (line 24) <== Memory access at offset 48 overflows this variable
+HINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork
+      (longjmp and C++ exceptions *are* supported)
+SUMMARY: AddressSanitizer: stack-buffer-overflow giftcardreader.c:71 in animate
+Shadow bytes around the buggy address:
+  0x00016fd16880: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x00016fd16900: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x00016fd16980: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x00016fd16a00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x00016fd16a80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x00016fd16b00: f1 f1 f1 f1 00 00[f3]f3 00 00 00 00 00 00 00 00
+  0x00016fd16b80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x00016fd16c00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x00016fd16c80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x00016fd16d00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x00016fd16d80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==90786==ABORTING
+[1]    90786 abort      ./giftcardreader.asan 1 
+
+As seen in the asan output above, there is a memory read happening 48 bytes beyong the allocated regs[16], specifically on the switch case 0x05 (line 71)
+My fix involved checking if the values of args1 or args2 go beyond the allowed 16, then we should output an error for this out-of-bounds register memory access. 

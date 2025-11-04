@@ -1,0 +1,83 @@
+My Prometheus configuration for monitoring the giftcard application consists of three main parts: a ConfigMap containing the Prometheus configuration, a Deployment to run the Prometheus server, and a Service to expose Prometheus to users.
+
+ConfigMap Explanation
+In urls.py, we can see that the metrics endpoint is exposed and corresponds to the metrics_view() function in views.py. This can also be verified by running minikube service proxy-service and visiting /metrics (e.g. http://127.0.0.1:52812/metrics) where we can see the plaintext view of all the counters and their gauges. From the proxy-service.yaml, we can see that only port 8080 is exposed for TCP connections, so this is the only possible target.
+
+apiVersion: v1 # specifies this is a ConfigMap resource in K8
+kind: ConfigMap
+metadata:
+  name: prometheus-config # Names the ConfigMap in the default namespace
+  namespace: default
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s # Sets Prometheus to collect metrics every 15s
+    scrape_configs:
+      - job_name: 'proxy-job' # Names this monitoring target
+        metrics_path: '/metrics' # Specifies the endpoint path 
+        static_configs:
+          - targets: ['proxy-service:8080'] # Tells Prometheus to scrape metrics from this service/port
+
+Deployment Explanation
+Here we create a K8 Deployment for running the Prometheus server. This deployment ensures that a Prometheus instance is always running, and automatic restarts will occur if the Pod crashes.
+
+apiVersion: apps/v1 # Specifies that this is a Deployment resource
+kind: Deployment
+metadata:
+  name: prometheus-deployment
+spec:
+  replicas: 1 # Sets the number of Prometheus instances to 1
+  selector:
+    matchLabels:
+      app: prometheus-server # Used to identify pods in this deployment
+  template:
+    metadata:
+      labels:
+        app: prometheus-server
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus:latest # Use the official Prometheus Docker image
+          ports:
+            - containerPort: 9090 # Expose the default Prometheus web interface port
+          volumeMounts:
+            - name: prometheus-config-volume 
+              mountPath: /etc/prometheus/ # Mount our configuration at the standard location
+      volumes:
+        - name: prometheus-config-volume # Create a volume from our ConfigMap
+          configMap:
+            name: prometheus-config # The configuration is now available to the container
+
+Service Explanation
+Here we create a K8 Service to expose the Prometheus web interface. This allows us to access the Prometheus web interface using minikube service prometheus-service.
+
+apiVersion: v1 # Specifies this is a Service resource in K8
+kind: Service
+metadata:
+  name: prometheus-service
+spec:
+  selector:
+    app: prometheus-server # Target pods with this label (set in the deployment section)
+  ports:
+  - port: 9090
+    targetPort: 9090 # maps the service's port 9090 to the container's port 9090
+  type: NodePort # Exposes the service on a port on each cluster node, making it accessible from outside the cluster
+
+Implementation Steps
+We can apply the configurations above to the K8 cluster and restart the deployment:
+kubectl apply -f prometheus.yaml
+kubectl apply -f prometheus-deploy.yaml
+kubectl apply -f prometheus-service.yaml
+kubectl rollout restart deployment prometheus-deployment  
+
+Verify that Prometheus is running correctly:
+kubectl get pods -l app=prometheus-server 
+
+Access the web interface:         
+minikube service prometheus-service
+
+We can navigate to Status > Target Health to verify that the proxy-job is up and is scraping metrics as intended. We can also trigger a database 404 error by attempting to gift a card to a nonexistent user. This causes an increase in database_error_return_404_total, which can be seen as a Table or a Graph.
+
+
+
+

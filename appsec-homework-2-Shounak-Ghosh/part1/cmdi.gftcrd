@@ -1,0 +1,13 @@
+{
+  "merchant_id": "Test",
+  "customer_id": "Test",
+  "total_value": 100,
+  "records": [
+    {
+      "record_type": "amount_change",
+      "amount_added": 2000,
+      "signature": "signature"
+    }
+  ]
+  'break JSON strucutre'
+}

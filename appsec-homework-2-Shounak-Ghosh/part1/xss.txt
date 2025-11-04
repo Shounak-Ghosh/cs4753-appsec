@@ -1,0 +1,1 @@
+/buy/1?director=<script>alert("hello")</script>

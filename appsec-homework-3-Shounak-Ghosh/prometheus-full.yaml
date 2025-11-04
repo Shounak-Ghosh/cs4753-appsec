@@ -1,0 +1,56 @@
+# 1. ConfigMap section - this contains the actual Prometheus configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: default
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+    scrape_configs:
+      - job_name: 'proxy-job'
+        metrics_path: '/metrics'
+        static_configs:
+          - targets: ['proxy-service:8080']
+---
+# 2. Deployment section - runs the Prometheus container with the config
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus-server
+  template:
+    metadata:
+      labels:
+        app: prometheus-server
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus:latest
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: prometheus-config-volume
+              mountPath: /etc/prometheus/
+      volumes:
+        - name: prometheus-config-volume
+          configMap:
+            name: prometheus-config
+---
+# 3. Service section - exposes Prometheus to the cluster and externally
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-service
+spec:
+  selector:
+    app: prometheus-server
+  ports:
+  - port: 9090
+    targetPort: 9090
+  type: NodePort

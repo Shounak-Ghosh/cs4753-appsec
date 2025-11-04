@@ -1,0 +1,11 @@
+asgiref==3.8.1
+cffi==1.17.1
+cryptography==44.0.2
+Django==5.1.7
+django-fernet-fields==0.6
+dotenv==0.9.9
+pip==22.3
+pycparser==2.22
+python-dotenv==1.0.1
+setuptools==65.5.0
+sqlparse==0.5.3

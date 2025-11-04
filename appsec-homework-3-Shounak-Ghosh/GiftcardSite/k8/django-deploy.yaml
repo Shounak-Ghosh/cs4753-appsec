@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assignment3-django-deploy
+  labels:
+    app: assignment3-django-deploy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      pod: assignment3-django-deploy
+  template:
+    metadata:
+      labels:
+        pod: assignment3-django-deploy
+    spec:
+      containers:
+        - name: assignment3-django-deploy
+          image: shounakg549/assign3:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: MYSQL_ROOT_PASSWORD
+                  
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: SECRET_KEY
+
+            - name: MYSQL_DB
+              value: GiftcardSiteDB
+
+            - name: MYSQL_HOST
+              value: mysql-service
+
+            - name: ALLOWED_HOSTS
+              value: "*,"
+
+            - name: UWSGI_BUFFER_SIZE
+              value: "32768"
+            
+            - name: UWSGI_POST_BUFFERING
+              value: "32768"
+
+          volumeMounts:
+            - name: mysql-volume-mount
+              mountPath: /var/lib/busybox
+
+            - name: static-data-volume-mount
+              mountPath: /vol/static
+
+      volumes:
+        - name: mysql-volume-mount
+          persistentVolumeClaim:
+            claimName: mysql-pvc
+
+        - name: static-data-volume-mount
+          persistentVolumeClaim:
+            claimName: static-data-pvc
